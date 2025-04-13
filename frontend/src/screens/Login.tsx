@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -14,7 +14,15 @@ export const Login = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isAuthenticating, setIsAuthenticating] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+          if (user) navigate("/");
+        });
+        return unsubscribe;
+      }, [navigate]);
 
     const toggleAuth = () => {
         setIsLogin(!isLogin);
@@ -25,43 +33,49 @@ export const Login = () => {
     const submitText = isLogin ? "Войти" : "Зарегистрироваться";
 
     const signUp = async (): Promise<void> => {
+        setIsAuthenticating(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(
                 auth,
                 email,
                 password
             );
-            toast.success("Вы успешно зарегистрировались");
 
             await updateProfile(userCredential.user, {
                 displayName: name,
             });
 
-            navigate("/");
+            toast.success("Регистрация успешна! Подтвердите вход");
         } catch (error) {
-            toast.error("Ошибка");
+            toast.error("Ошибка регистрации");
             console.log(error);
+        } finally {
+            setIsAuthenticating(false);
         }
     };
 
     const signIn = async (): Promise<void> => {
+        setIsAuthenticating(true);
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            toast.success("Вы успешно вошли в ваш аккаунт");
-            navigate("/");
+            toast.success("Вход выполнен успешно");
         } catch (error) {
             toast.error("Неверные данные");
             console.log(error);
+        } finally {
+            setIsAuthenticating(false);
         }
     };
 
     const signUpWithGoogle = async () => {
+        setIsAuthenticating(true);
         try {
             await signInWithPopup(auth, googleProvider);
-            navigate("/");
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.log(error.message);
+        } finally {
+            setIsAuthenticating(false);
         }
     };
 
@@ -83,7 +97,10 @@ export const Login = () => {
                     </h1>
 
                     <form className="mt-10" onSubmit={submitForm}>
-                        <fieldset className="grid gap-5">
+                        <fieldset
+                            className="grid gap-5"
+                            disabled={isAuthenticating}
+                        >
                             {!isLogin && (
                                 <div>
                                     <label
@@ -144,9 +161,12 @@ export const Login = () => {
                             <div>
                                 <button
                                     type="submit"
-                                    className="w-full bg-white py-2 px-4 rounded-md"
+                                    className="w-full bg-white py-2 px-4 rounded-md disabled:opacity-50"
+                                    disabled={isAuthenticating}
                                 >
-                                    {submitText}
+                                    {isAuthenticating
+                                        ? "Обработка..."
+                                        : submitText}
                                 </button>
                             </div>
                             <div className="relative">
@@ -158,7 +178,8 @@ export const Login = () => {
                             <button
                                 onClick={signUpWithGoogle}
                                 type="button"
-                                className="w-full border border-gray-300 py-2 px-4 rounded-md text-white flex items-center justify-center gap-2"
+                                className="w-full border border-gray-300 py-2 px-4 rounded-md text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                                disabled={isAuthenticating}
                             >
                                 <img
                                     src="https://www.google.com/favicon.ico"
